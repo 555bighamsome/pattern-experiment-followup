@@ -179,7 +179,10 @@
                     </div>
                 </div>
                 <div class="controls-section primitives-section">
-                    <h4 class="panel-subtitle">PRIMITIVES</h4>
+                    <div class="primitives-title-row">
+                        <h4 class="panel-subtitle">PRIMITIVES</h4>
+                        <span id="pointCounter" class="point-counter" style="display: none;">0/10</span>
+                    </div>
                     <div class="section-panel">
                     <div class="primitives-grid-inline">
                         <button class="primitive-btn" data-op="blank" onclick="applyPrimitive('blank')" title="Create blank pattern">
@@ -200,6 +203,13 @@
                         <button class="primitive-btn" data-op="triangle" onclick="applyPrimitive('triangle')" title="Triangle shape">
                             <span class="btn-icon"></span>
                         </button>
+                    </div>
+                    <div id="brushPanel" class="brush-panel" style="display: none;">
+                        <div id="brushCanvas" class="brush-canvas"></div>
+                        <div class="brush-actions">
+                            <button type="button" class="btn" onclick="clearBrush()">Clear</button>
+                            <button type="button" class="btn btn-primary" onclick="applyBrushPattern()">Use</button>
+                        </div>
                     </div>
                     </div>
                 </div>
@@ -268,5 +278,6 @@
     <script src="../js/autoScale.js"></script>
     <script src="../js/dataSubmission.js"></script>
     <script type="module" src="../js/freeplay.js"></script>
+    <script src="../js/devTestControls.js"></script>
 </body>
 </html>

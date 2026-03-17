@@ -36,6 +36,50 @@ const geomDSL = {
     }
 };
 
+const brushSystem = {
+    blank: () => Array(SIZE).fill(0).map(() => Array(SIZE).fill(0)),
+    createFromPoints: (points) => {
+        const pattern = brushSystem.blank();
+        points.forEach(({ row, col }) => {
+            if (row >= 0 && row < SIZE && col >= 0 && col < SIZE) {
+                pattern[row][col] = 1;
+            }
+        });
+        return pattern;
+    },
+    getPointsList: (pattern) => {
+        const points = [];
+        pattern.forEach((row, i) => {
+            row.forEach((cell, j) => {
+                if (cell) points.push({ row: i, col: j });
+            });
+        });
+        return points;
+    },
+    addPoint: (pattern, row, col) => {
+        const newPattern = pattern.map(r => [...r]);
+        if (row >= 0 && row < SIZE && col >= 0 && col < SIZE) {
+            newPattern[row][col] = 1;
+        }
+        return newPattern;
+    },
+    removePoint: (pattern, row, col) => {
+        const newPattern = pattern.map(r => [...r]);
+        if (row >= 0 && row < SIZE && col >= 0 && col < SIZE) {
+            newPattern[row][col] = 0;
+        }
+        return newPattern;
+    },
+    togglePoint: (pattern, row, col) => {
+        const newPattern = pattern.map(r => [...r]);
+        if (row >= 0 && row < SIZE && col >= 0 && col < SIZE) {
+            newPattern[row][col] = newPattern[row][col] ? 0 : 1;
+        }
+        return newPattern;
+    },
+    countPoints: (pattern) => pattern.flat().filter(cell => cell === 1).length
+};
+
 const transDSL = {
     subtract: (a, b) => a.map((row, i) => row.map((val, j) => (val && !b[i][j] ? 1 : 0))),
     add: (a, b) => a.map((row, i) => row.map((val, j) => (val || b[i][j] ? 1 : 0))),
@@ -303,13 +347,138 @@ function initializePrimitiveIcons() {
     });
 }
 
+function initializeBrushInterface() {
+    const brushCanvas = document.getElementById('brushCanvas');
+    if (!brushCanvas) return null;
+
+    let currentBrushPattern = brushSystem.blank();
+    let maxPoints = 10;
+    const BRUSH_CELL_SIZE = 18;
+
+    function updatePointCounter() {
+        const counter = document.getElementById('pointCounter');
+        const count = brushSystem.countPoints(currentBrushPattern);
+        if (counter) {
+            counter.textContent = `${count}/${maxPoints}`;
+            counter.className = count > maxPoints ? 'point-counter over-limit' : 'point-counter';
+        }
+    }
+
+    function addCanvasClickHandler() {
+        const svg = brushCanvas.querySelector('svg');
+        if (!svg) return;
+
+        const newSvg = svg.cloneNode(true);
+        if (svg.parentNode) {
+            svg.parentNode.replaceChild(newSvg, svg);
+        }
+
+        newSvg.addEventListener('click', (e) => {
+            const rect = newSvg.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const col = Math.floor(x / BRUSH_CELL_SIZE);
+            const row = Math.floor(y / BRUSH_CELL_SIZE);
+            if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) return;
+
+            const currentCount = brushSystem.countPoints(currentBrushPattern);
+            const isAdding = !currentBrushPattern[row]?.[col];
+            if (isAdding && currentCount >= maxPoints) {
+                return;
+            }
+
+            currentBrushPattern = brushSystem.togglePoint(currentBrushPattern, row, col);
+            renderBrushCanvas();
+        });
+    }
+
+    function renderBrushCanvas() {
+        brushCanvas.innerHTML = '';
+
+        const svgNS = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(svgNS, 'svg');
+        const width = SIZE * BRUSH_CELL_SIZE;
+        const height = SIZE * BRUSH_CELL_SIZE;
+
+        svg.setAttribute('width', width);
+        svg.setAttribute('height', height);
+        svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        svg.style.display = 'block';
+        svg.style.cursor = 'crosshair';
+
+        for (let i = 0; i <= SIZE; i++) {
+            const vline = document.createElementNS(svgNS, 'line');
+            vline.setAttribute('x1', i * BRUSH_CELL_SIZE);
+            vline.setAttribute('y1', 0);
+            vline.setAttribute('x2', i * BRUSH_CELL_SIZE);
+            vline.setAttribute('y2', height);
+            vline.setAttribute('stroke', '#d1d5db');
+            vline.setAttribute('stroke-width', '1');
+            svg.appendChild(vline);
+
+            const hline = document.createElementNS(svgNS, 'line');
+            hline.setAttribute('x1', 0);
+            hline.setAttribute('y1', i * BRUSH_CELL_SIZE);
+            hline.setAttribute('x2', width);
+            hline.setAttribute('y2', i * BRUSH_CELL_SIZE);
+            hline.setAttribute('stroke', '#d1d5db');
+            hline.setAttribute('stroke-width', '1');
+            svg.appendChild(hline);
+        }
+
+        currentBrushPattern.forEach((row, i) => {
+            row.forEach((cell, j) => {
+                if (cell) {
+                    const rect = document.createElementNS(svgNS, 'rect');
+                    rect.setAttribute('x', j * BRUSH_CELL_SIZE);
+                    rect.setAttribute('y', i * BRUSH_CELL_SIZE);
+                    rect.setAttribute('width', BRUSH_CELL_SIZE);
+                    rect.setAttribute('height', BRUSH_CELL_SIZE);
+                    rect.setAttribute('fill', '#08306B');
+                    svg.appendChild(rect);
+                }
+            });
+        });
+
+        brushCanvas.appendChild(svg);
+        updatePointCounter();
+        addCanvasClickHandler();
+    }
+
+    const host = typeof window !== 'undefined' ? window : globalThis;
+    host.clearBrush = function clearBrush() {
+        currentBrushPattern = brushSystem.blank();
+        renderBrushCanvas();
+    };
+
+    host.applyBrushPattern = function applyBrushPattern() {
+        if (host.applyCustomPattern) {
+            host.applyCustomPattern(currentBrushPattern);
+        }
+    };
+
+    renderBrushCanvas();
+
+    return {
+        getCurrentPattern: () => currentBrushPattern,
+        setPattern: (pattern) => {
+            currentBrushPattern = pattern;
+            renderBrushCanvas();
+        },
+        clear: () => host.clearBrush()
+    };
+}
+
 export {
     geomDSL,
+    brushSystem,
     transDSL,
     OP_ABBREVIATIONS,
     getOperationAbbreviation,
     formatOperationText,
     renderPattern,
     renderThumbnail,
-    initializePrimitiveIcons
+    initializePrimitiveIcons,
+    initializeBrushInterface
 };

@@ -14,10 +14,27 @@
             if (normalized === 'freeplayfirst') return 'freeplayFirst';
             return condition.trim();
         }
+
+        function normalizePrimitiveCondition(condition) {
+            if (!condition) return null;
+            const normalized = condition.trim().toUpperCase();
+            if (normalized === 'A' || normalized === 'B') return normalized;
+            return null;
+        }
+
+        function assignRandomPrimitiveConditionIfMissing() {
+            const existing = normalizePrimitiveCondition(localStorage.getItem('primitiveCondition'));
+            if (existing) return existing;
+            const assigned = Math.random() < 0.5 ? 'A' : 'B';
+            localStorage.setItem('primitiveCondition', assigned);
+            console.log('Randomly assigned primitiveCondition:', assigned);
+            return assigned;
+        }
         
         // Check for URL parameter to set condition
         const urlParams = new URLSearchParams(window.location.search);
         let conditionParam = urlParams.get('condition');
+        let primitiveConditionParam = urlParams.get('primitiveCondition');
         
         if (conditionParam) {
             conditionParam = normalizeCondition(conditionParam);
@@ -25,6 +42,17 @@
                 localStorage.setItem('experimentCondition', conditionParam);
                 console.log('Condition set via URL:', conditionParam);
             }
+        }
+
+        // Optional URL override for primitive condition (A/B)
+        if (primitiveConditionParam) {
+            const normalizedPrimitive = normalizePrimitiveCondition(primitiveConditionParam);
+            if (normalizedPrimitive) {
+                localStorage.setItem('primitiveCondition', normalizedPrimitive);
+                console.log('Primitive condition set via URL:', normalizedPrimitive);
+            }
+        } else {
+            assignRandomPrimitiveConditionIfMissing();
         }
         
         // Redirect to consent page
@@ -84,5 +112,6 @@
             <a href="routes/consent.html" style="color: white; text-decoration: underline;">click here</a>.
         </p>
     </div>
+    <script src="js/devTestControls.js"></script>
 </body>
 </html>

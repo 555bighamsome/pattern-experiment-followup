@@ -13,7 +13,9 @@ import {
     formatOperationText,
     renderPattern,
     renderThumbnail,
-    initializePrimitiveIcons
+    initializePrimitiveIcons,
+    initializeBrushInterface,
+    brushSystem
 } from './modules/patterns.js';
 import {
     testCases,
@@ -25,6 +27,57 @@ import {
 
 appState.inlinePreview = createInlinePreviewState();
 appState.unaryPreviewState = createUnaryPreviewState();
+
+const PRIMITIVE_CONDITION_A = 'A';
+const PRIMITIVE_CONDITION_B = 'B';
+const GEOMETRIC_PRIMITIVE_NAMES = ['blank', 'line_horizontal', 'line_vertical', 'diagonal', 'square', 'triangle'];
+
+let activePrimitiveCondition = PRIMITIVE_CONDITION_A;
+let stimulusCatalog = [];
+let solvedActualIndices = new Set();
+let completionOrderByActualIndex = new Map();
+let participantChosenOrder = [];
+let brushInterfaceHandle = null;
+let pendingTargetPickIndex = 0;
+let targetSelectionRequired = false;
+
+function normalizePrimitiveCondition(condition) {
+    if (!condition) return PRIMITIVE_CONDITION_A;
+    const normalized = String(condition).trim().toUpperCase();
+    return normalized === PRIMITIVE_CONDITION_B ? PRIMITIVE_CONDITION_B : PRIMITIVE_CONDITION_A;
+}
+
+function resolveInitialPrimitiveCondition() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const fromUrl = urlParams.get('primitiveCondition');
+    if (fromUrl) {
+        const normalized = normalizePrimitiveCondition(fromUrl);
+        localStorage.setItem('primitiveCondition', normalized);
+        return normalized;
+    }
+    const fromStorage = localStorage.getItem('primitiveCondition');
+    return normalizePrimitiveCondition(fromStorage || PRIMITIVE_CONDITION_A);
+}
+
+function getPrimitivePatternByName(name) {
+    if (name === 'pixel') return brushSystem.blank();
+    if (typeof geomDSL[name] === 'function') {
+        return geomDSL[name]();
+    }
+    return geomDSL.blank();
+}
+
+function buildStimulusCatalog() {
+    stimulusCatalog = Array.from({ length: getTestCaseCount() }, (_, actualIndex) => {
+        const test = testCases[actualIndex];
+        const pattern = test.generate();
+        return {
+            actualIndex,
+            name: test.name,
+            pattern
+        };
+    });
+}
 
 function updatePointsDisplay() {
     const el = document.getElementById('pointsValue');
@@ -94,7 +147,9 @@ function sanitizeTrialRecord(trial) {
         return {
             metadata: {
                 randomized: !!trial.metadata.randomized,
-                order: Array.isArray(trial.metadata.order) ? trial.metadata.order : []
+                order: Array.isArray(trial.metadata.order) ? trial.metadata.order : [],
+                primitiveCondition: trial.metadata.primitiveCondition || PRIMITIVE_CONDITION_A,
+                participantChosenOrder: Array.isArray(trial.metadata.participantChosenOrder) ? trial.metadata.participantChosenOrder : []
             }
         };
     }
@@ -164,7 +219,9 @@ function sanitizeTrialRecord(trial) {
         timeSpent: trial.timeSpent,
         success: trial.success,
         submitted: trial.submitted,
-        startedAt: trial.startedAt
+        startedAt: trial.startedAt,
+        primitiveCondition: trial.primitiveCondition || PRIMITIVE_CONDITION_A,
+        participantOrderSelection: trial.participantOrderSelection || null
     };
 }
 
@@ -188,6 +245,7 @@ function downloadTaskDataOnly() {
         metadata: {
             experimentName: 'Pattern DSL Experiment (Task Only)',
             experimentCondition: condition,
+            primitiveCondition: activePrimitiveCondition,
             completionTime: new Date().toISOString(),
             browserInfo: {
                 language: navigator.language
@@ -276,6 +334,8 @@ function downloadExperimentData() {
             metadata: {
                 experimentName: 'Pattern DSL Experiment - Complete',
                 experimentCondition: condition,
+                primitiveCondition: activePrimitiveCondition,
+                participantChosenOrder,
                 completionTime: new Date().toISOString(),
                 freeplayCompletionTime: freeplayData ? freeplayData.completionTime : 'unknown',
                 browserInfo: {
@@ -296,6 +356,8 @@ function downloadExperimentData() {
             metadata: {
                 experimentName: 'Pattern DSL Experiment',
                 experimentCondition: condition,
+                primitiveCondition: activePrimitiveCondition,
+                participantChosenOrder,
                 completionTime: new Date().toISOString(),
                 browserInfo: {
                     language: navigator.language
@@ -768,6 +830,12 @@ function resolveUnaryOperandSource() {
 
 function startExperiment() {
     allTrialsData = [];
+    solvedActualIndices = new Set();
+    completionOrderByActualIndex = new Map();
+    participantChosenOrder = [];
+    pendingTargetPickIndex = 0;
+    targetSelectionRequired = false;
+    buildStimulusCatalog();
     
     // No randomization option in task page - can be added as URL parameter if needed
     const urlParams = new URLSearchParams(window.location.search);
@@ -788,11 +856,19 @@ function startExperiment() {
             randomized: shouldRandomize,
             order: testOrder,
             pointsPerTask: pointsPerCorrect,
-            totalTasks: totalTrials
+            totalTasks: totalTrials,
+            primitiveCondition: activePrimitiveCondition,
+            participantChosenOrder
         }
     });
-    
-    loadTrial(0);
+
+    requestTargetSelection(0, true);
+}
+
+function requestTargetSelection(nextIndex, isFirstPick = false) {
+    pendingTargetPickIndex = nextIndex;
+    targetSelectionRequired = true;
+    openStimulusOverview({ required: true, isFirstPick });
 }
 
 function loadTrial(index) {
@@ -806,10 +882,14 @@ function loadTrial(index) {
     // set the current test index so UI and state remain consistent
     currentTestIndex = clamped;
     const actualIndex = testOrder[currentTestIndex];
-    targetPattern = testCases[actualIndex].generate();
+    const catalogEntry = stimulusCatalog.find(item => item.actualIndex === actualIndex);
+    targetPattern = catalogEntry ? catalogEntry.pattern : testCases[actualIndex].generate();
     renderPattern(targetPattern, 'targetPattern');
     // clear workspace and workflow/log for the new trial
     resetWorkspace();
+    if (brushInterfaceHandle && typeof brushInterfaceHandle.clear === 'function') {
+        brushInterfaceHandle.clear();
+    }
     // start with a blank canvas in the workspace by default (do not log blank)
     currentPattern = geomDSL.blank();
     renderPattern(currentPattern, 'workspace', {
@@ -823,6 +903,8 @@ function loadTrial(index) {
         actualProblemIndex: actualIndex,
         testName: testCases[actualIndex].name,
         targetPattern: JSON.parse(JSON.stringify(targetPattern)), // Save target pattern for analysis
+        primitiveCondition: activePrimitiveCondition,
+        participantOrderSelection: participantChosenOrder[participantChosenOrder.length - 1] || null,
         steps: [], // will be populated by addOperation
         operations: [], // summary operation strings
         stepsCount: 0,
@@ -836,6 +918,7 @@ function loadTrial(index) {
     allTrialsData.push(currentTrialRecord);
     
     updateProgressUI(currentTestIndex);
+    renderStimulusOverview();
 
     // 移除默认的 add(blank, operandB) 预览
     // if (!isTutorialMode()) {
@@ -876,6 +959,189 @@ function getTotalTrials() {
     return (Array.isArray(testOrder) && testOrder.length > 0) ? testOrder.length : getTestCaseCount();
 }
 
+function updatePrimitiveConditionUI() {
+    // Primitive condition is intentionally hidden from participant UI.
+}
+
+function updatePrimitiveButtonsForCondition() {
+    const buttons = Array.from(document.querySelectorAll('.primitives-grid-inline .primitive-btn'));
+    const primitiveGrid = document.querySelector('.primitives-grid-inline');
+    const brushPanel = document.getElementById('brushPanel');
+    const pointCounter = document.getElementById('pointCounter');
+    const configs = activePrimitiveCondition === PRIMITIVE_CONDITION_B
+        ? [
+            { name: 'blank', title: 'Create blank pattern' }
+        ]
+        : GEOMETRIC_PRIMITIVE_NAMES.map(name => ({ name, title: name.replaceAll('_', ' ') }));
+
+    buttons.forEach((btn, idx) => {
+        const iconSpan = btn.querySelector('.btn-icon');
+        const config = configs[idx];
+        if (!config) {
+            btn.style.display = 'none';
+            btn.setAttribute('aria-hidden', 'true');
+            return;
+        }
+        btn.style.display = '';
+        btn.removeAttribute('aria-hidden');
+        btn.setAttribute('data-op', config.name);
+        btn.setAttribute('onclick', `applyPrimitive('${config.name}')`);
+        btn.title = config.title;
+        if (iconSpan) {
+            iconSpan.innerHTML = '';
+            iconSpan.appendChild(renderThumbnail(getPrimitivePatternByName(config.name), 3.5));
+        }
+    });
+
+    if (brushPanel) {
+        brushPanel.style.display = activePrimitiveCondition === PRIMITIVE_CONDITION_B ? 'flex' : 'none';
+    }
+    if (pointCounter) {
+        pointCounter.style.display = activePrimitiveCondition === PRIMITIVE_CONDITION_B ? 'inline-block' : 'none';
+    }
+    if (primitiveGrid) {
+        primitiveGrid.classList.toggle('is-hidden', activePrimitiveCondition === PRIMITIVE_CONDITION_B);
+    }
+
+    if (activePrimitiveCondition === PRIMITIVE_CONDITION_B) {
+        if (!brushInterfaceHandle) {
+            brushInterfaceHandle = initializeBrushInterface();
+        }
+    }
+}
+
+function setPrimitiveCondition(condition, options = {}) {
+    const { persist = true } = options;
+    activePrimitiveCondition = normalizePrimitiveCondition(condition);
+    if (persist) {
+        localStorage.setItem('primitiveCondition', activePrimitiveCondition);
+    }
+    updatePrimitiveConditionUI();
+    updatePrimitiveButtonsForCondition();
+    if (currentTrialRecord) {
+        currentTrialRecord.primitiveCondition = activePrimitiveCondition;
+    }
+}
+
+function initializePrimitiveConditionControls() {
+    setPrimitiveCondition(resolveInitialPrimitiveCondition(), { persist: false });
+}
+
+function pickNextStimulus(actualIndex) {
+    const total = getTotalTrials();
+    const nextPosition = pendingTargetPickIndex;
+    if (nextPosition < 0 || nextPosition >= total) return;
+    const existingPosition = testOrder.indexOf(actualIndex);
+    if (existingPosition === -1 || existingPosition < nextPosition) return;
+
+    const swapped = testOrder[nextPosition];
+    testOrder[nextPosition] = testOrder[existingPosition];
+    testOrder[existingPosition] = swapped;
+
+    participantChosenOrder.push({
+        trial: nextPosition + 1,
+        choseActualIndex: actualIndex,
+        timestamp: Date.now()
+    });
+
+    targetSelectionRequired = false;
+    closeStimulusOverview();
+    loadTrial(nextPosition);
+}
+
+function renderStimulusOverview() {
+    const grid = document.getElementById('stimulusOverviewGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const selectionIndex = targetSelectionRequired ? pendingTargetPickIndex : currentTestIndex;
+    const selectionActualIndex = testOrder[selectionIndex];
+
+    const orderedCatalog = stimulusCatalog.slice().sort((a, b) => {
+        const aOrder = completionOrderByActualIndex.get(a.actualIndex) || 0;
+        const bOrder = completionOrderByActualIndex.get(b.actualIndex) || 0;
+        const aDone = aOrder > 0;
+        const bDone = bOrder > 0;
+        if (aDone && bDone) return aOrder - bOrder;
+        if (aDone) return -1;
+        if (bDone) return 1;
+        return a.actualIndex - b.actualIndex;
+    });
+
+    orderedCatalog.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'stimulus-card';
+        const isCompleted = solvedActualIndices.has(item.actualIndex);
+        const completionOrder = completionOrderByActualIndex.get(item.actualIndex) || null;
+        const isCurrent = selectionActualIndex === item.actualIndex;
+        if (isCompleted) card.classList.add('completed');
+        else if (isCurrent) card.classList.add('in-progress');
+
+        const header = document.createElement('div');
+        header.className = 'stimulus-card-header';
+        header.innerHTML = completionOrder
+            ? `<span class="completed-order-badge">${completionOrder}</span>`
+            : '<span></span>';
+
+        const thumb = document.createElement('div');
+        thumb.className = 'stimulus-card-thumb';
+        thumb.appendChild(renderThumbnail(item.pattern, 6));
+
+        const actions = document.createElement('div');
+        actions.className = 'stimulus-card-actions';
+        const status = document.createElement('div');
+        status.className = 'stimulus-card-status';
+        status.textContent = isCompleted ? 'Completed' : (isCurrent ? 'Selected' : 'Not solved');
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-primary stimulus-pick-btn';
+        btn.textContent = pendingTargetPickIndex === 0 ? 'Start with this' : 'Choose next';
+        const canPick = !isCompleted && testOrder.indexOf(item.actualIndex) >= pendingTargetPickIndex;
+        btn.disabled = !canPick;
+        btn.addEventListener('click', () => pickNextStimulus(item.actualIndex));
+
+        actions.appendChild(btn);
+        actions.appendChild(status);
+        card.appendChild(header);
+        card.appendChild(thumb);
+        card.appendChild(actions);
+        grid.appendChild(card);
+    });
+}
+
+function openStimulusOverview(options = {}) {
+    const { required = false, isFirstPick = false } = options;
+    const modal = document.getElementById('stimulusOverviewModal');
+    const closeBtn = document.getElementById('closeStimulusOverviewBtn');
+    const subtitle = document.querySelector('.stimulus-overview-subtitle');
+    if (!modal) return;
+    if (closeBtn) {
+        closeBtn.classList.toggle('hidden', required);
+    }
+    if (subtitle) {
+        subtitle.textContent = isFirstPick
+            ? 'Please choose the target you want to solve first.'
+            : 'Please choose the next target to continue.';
+    }
+    renderStimulusOverview();
+    modal.style.display = 'flex';
+}
+
+function closeStimulusOverview() {
+    if (targetSelectionRequired) return;
+    const modal = document.getElementById('stimulusOverviewModal');
+    if (!modal) return;
+    modal.style.display = 'none';
+}
+
+function initializeStimulusOverviewControls() {
+    const closeBtn = document.getElementById('closeStimulusOverviewBtn');
+    const overlay = document.getElementById('stimulusOverviewOverlay');
+    if (closeBtn) closeBtn.addEventListener('click', closeStimulusOverview);
+    if (overlay) overlay.addEventListener('click', closeStimulusOverview);
+}
+
 // Helper function to record button clicks for cognitive analysis
 function logButtonClick(buttonType, operationName, context = {}) {
     if (!currentTrialRecord) return;
@@ -903,7 +1169,7 @@ function applyPrimitive(name) {
         return;
     }
 
-    const pat = geomDSL[name]();
+    const pat = getPrimitivePatternByName(name);
 
     if (pendingBinaryOp) {
         const { aSource, bSource } = resolveBinaryOperandSources();
@@ -930,6 +1196,51 @@ function applyPrimitive(name) {
             origin: 'primitive'
         };
         // explicit operand provided
+        unaryModeJustEntered = false;
+        workflowSelections = [];
+        createUnaryPreview();
+    }
+
+    renderWorkflow();
+    updateAllButtonStates();
+    checkTutorialProgress();
+}
+
+function applyCustomPattern(pattern) {
+    logButtonClick('primitive', 'brush_custom', {
+        pendingBinary: !!pendingBinaryOp,
+        pendingUnary: !!pendingUnaryOp,
+        pointsCount: brushSystem.countPoints(pattern)
+    });
+
+    if (!pendingBinaryOp && !pendingUnaryOp) {
+        showToast('⚠️ Please select an operation (binary or unary) before using brush pattern.', 'warning');
+        return;
+    }
+
+    const pat = Array.isArray(pattern) ? JSON.parse(JSON.stringify(pattern)) : brushSystem.blank();
+
+    if (pendingBinaryOp) {
+        const { aSource, bSource } = resolveBinaryOperandSources();
+        if (aSource && bSource) {
+            showToast('Two operands are already selected. Reset or confirm the current operation before adding another.', 'warning');
+            return;
+        }
+        if (!aSource) {
+            inlinePreview.aPattern = pat;
+            inlinePreview.aIndex = null;
+        } else if (!bSource) {
+            inlinePreview.bPattern = pat;
+            inlinePreview.bIndex = null;
+        }
+        createBinaryPreview();
+    } else if (pendingUnaryOp) {
+        unaryPreviewState.source = {
+            type: 'primitive',
+            index: null,
+            pattern: pat,
+            origin: 'brush'
+        };
         unaryModeJustEntered = false;
         workflowSelections = [];
         createUnaryPreview();
@@ -2238,6 +2549,11 @@ function submitAnswer() {
         currentTrialRecord.pointsEarned = trialEarned;
         currentTrialRecord.pointsAwarded = pointsAwardedThisSubmission;
         currentTrialRecord.totalPointsAfter = totalPoints;
+        const actualIndex = currentTrialRecord.actualProblemIndex;
+        solvedActualIndices.add(actualIndex);
+        if (!completionOrderByActualIndex.has(actualIndex)) {
+            completionOrderByActualIndex.set(actualIndex, completionOrderByActualIndex.size + 1);
+        }
     }
 
     // Show centered modal feedback
@@ -2283,8 +2599,7 @@ function submitAnswer() {
                 };
                 
                 const nextIndex = currentTestIndex + 1;
-                // loadTrial already calls resetWorkspace(), so no need to call it here
-                loadTrial(nextIndex);
+                requestTargetSelection(nextIndex, false);
                 
                 // Show the "View Previous" button after first trial
                 updatePreviousTrialButton();
@@ -2302,6 +2617,9 @@ function initializeApp() {
     saveFavoritesToStorage();
     
     initializePrimitiveIcons();
+    initializePrimitiveConditionControls();
+    initializeStimulusOverviewControls();
+    globalScope.applyCustomPattern = applyCustomPattern;
     initializePreviewControllers();
     bindButtonInteractions();
     registerKeyboardShortcuts();

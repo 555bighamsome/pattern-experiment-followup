@@ -281,6 +281,62 @@ body:has(#experimentContent) {
     max-width: 900px;
 }
 
+.test-control-panel {
+    width: 900px;
+    min-width: 900px;
+    max-width: 900px;
+    margin: 1rem auto 0;
+    border: 1px dashed #94a3b8;
+    background: #f8fafc;
+    padding: 0.8rem;
+    display: none;
+}
+
+.test-control-panel.is-open {
+    display: block;
+}
+
+.test-control-toggle {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 2200;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    min-height: 32px;
+    min-width: 56px;
+    padding: 0.25rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.test-control-panel h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    color: #1e293b;
+}
+
+.test-condition-row,
+.test-nav-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.test-status-row {
+    margin: 0.5rem 0;
+    color: #334155;
+    font-size: 0.8rem;
+}
+
+.test-control-panel .btn {
+    min-height: 30px;
+    font-size: 0.72rem;
+    padding: 0.35rem 0.5rem;
+}
+
 /* Scrollable consent info */
 #consent-info {
     height: 450px;
@@ -490,6 +546,13 @@ body:has(#experimentContent) {
     min-height: 45px;
     max-height: 45px;
     flex-shrink: 0;
+}
+
+.overview-open-btn {
+    margin-left: 0.7rem;
+    padding: 0.4rem 0.65rem;
+    min-height: 30px;
+    font-size: 0.68rem;
 }
 
 .progress-info {
@@ -954,6 +1017,67 @@ body:has(#experimentContent) {
     margin-bottom: 0.45rem;
 }
 
+.primitives-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.primitives-title-row .panel-subtitle {
+    margin-bottom: 0;
+}
+
+.brush-panel {
+    margin-top: 0.2rem;
+    border: none;
+    background: transparent;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.point-counter {
+    font-size: 0.66rem;
+    color: #0f172a;
+    background: #e2e8f0;
+    border: 1px solid #cbd5e1;
+    padding: 0.1rem 0.35rem;
+}
+
+.point-counter.over-limit {
+    color: #ffffff;
+    background: #dc2626;
+    border-color: #dc2626;
+}
+
+.brush-canvas {
+    border: none;
+    background: #ffffff;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.brush-canvas svg {
+    max-width: 100%;
+    height: auto;
+}
+
+.brush-actions {
+    display: flex;
+    gap: 0.35rem;
+}
+
+.brush-actions .btn {
+    flex: 1;
+    min-height: 28px;
+    font-size: 0.65rem;
+}
+
 .preview-card {
     gap: 0.6rem;
     background: #ffffff;
@@ -987,13 +1111,16 @@ body:has(#experimentContent) {
     background: transparent;
     border: none;
     min-height: 0;
-    flex: 1 1 auto;
-    max-height: 360px; /* allow many items with scroll */
-    min-height: 120px;
-    overflow-y: auto;
+    flex: 0 0 auto;
+    max-height: none;
+    overflow: visible;
     overflow-x: hidden;
     justify-items: center;
     justify-content: center;
+}
+
+.primitives-grid-inline.is-hidden {
+    display: none;
 }
 
 .helpers-panel { 
@@ -1879,6 +2006,148 @@ body:has(#experimentContent) {
     backdrop-filter: blur(4px);
     z-index: 2000;
     animation: fadeIn 0.3s ease-out;
+}
+
+.stimulus-overview-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stimulus-overview-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+}
+
+.stimulus-overview-content {
+    position: relative;
+    width: min(980px, 92vw);
+    max-height: 88vh;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    padding: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    overflow: hidden;
+}
+
+.stimulus-overview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.stimulus-overview-header h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #0f172a;
+}
+
+.stimulus-overview-subtitle {
+    font-size: 0.74rem;
+    color: #475569;
+}
+
+.stimulus-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    gap: 0.55rem;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+
+.stimulus-card {
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    padding: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.stimulus-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.3rem;
+    font-size: 0.66rem;
+    color: #334155;
+}
+
+.completed-order-badge {
+    min-width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #16a34a;
+    color: #166534;
+    background: #dcfce7;
+    font-size: 0.62rem;
+    font-weight: 700;
+}
+
+.stimulus-card-thumb {
+    height: 70px;
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stimulus-card-thumb svg {
+    width: 64px;
+    height: 64px;
+}
+
+.stimulus-card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.stimulus-card-status {
+    font-size: 0.64rem;
+    color: #64748b;
+}
+
+.stimulus-card.completed {
+    border-color: #86efac;
+    background: #f0fdf4;
+}
+
+.stimulus-card.in-progress {
+    border-color: #93c5fd;
+    background: #eff6ff;
+}
+
+.stimulus-pick-btn {
+    min-height: 28px;
+    font-size: 0.64rem;
+}
+
+@media (max-width: 768px) {
+    .stimulus-overview-content {
+        width: min(640px, 95vw);
+        max-height: 92vh;
+        padding: 0.7rem;
+    }
+
+    .stimulus-overview-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .overview-open-btn {
+        padding: 0.35rem 0.45rem;
+        font-size: 0.62rem;
+    }
 }
 
 .modal-overlay.active {

@@ -7,7 +7,9 @@ import {
     formatOperationText,
     renderPattern,
     renderThumbnail,
-    initializePrimitiveIcons
+    initializePrimitiveIcons,
+    initializeBrushInterface,
+    brushSystem
 } from './modules/patterns.js';
 
 // Free Play Mode - Global State
@@ -30,6 +32,39 @@ let isViewingPreviousTrial = false; // Flag to track if user is viewing previous
 
 // Session recording for research analysis
 let sessionRecord = null;
+
+let brushInterfaceHandle = null;
+
+const PRIMITIVE_CONDITION_A = 'A';
+const PRIMITIVE_CONDITION_B = 'B';
+const GEOMETRIC_PRIMITIVE_NAMES = ['blank', 'line_horizontal', 'line_vertical', 'diagonal', 'square', 'triangle'];
+let activePrimitiveCondition = PRIMITIVE_CONDITION_A;
+
+function normalizePrimitiveCondition(condition) {
+    if (!condition) return PRIMITIVE_CONDITION_A;
+    const normalized = String(condition).trim().toUpperCase();
+    return normalized === PRIMITIVE_CONDITION_B ? PRIMITIVE_CONDITION_B : PRIMITIVE_CONDITION_A;
+}
+
+function resolveInitialPrimitiveCondition() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const fromUrl = urlParams.get('primitiveCondition');
+    if (fromUrl) {
+        const normalized = normalizePrimitiveCondition(fromUrl);
+        localStorage.setItem('primitiveCondition', normalized);
+        return normalized;
+    }
+    const fromStorage = localStorage.getItem('primitiveCondition');
+    return normalizePrimitiveCondition(fromStorage || PRIMITIVE_CONDITION_A);
+}
+
+function getPrimitivePatternByName(name) {
+    if (name === 'pixel') return brushSystem.blank();
+    if (typeof geomDSL[name] === 'function') {
+        return geomDSL[name]();
+    }
+    return geomDSL.blank();
+}
 
 // Initialize state objects
 function createInlinePreviewState() {
@@ -286,6 +321,9 @@ function showNamingDialog() {
         
         // Clear workspace after saving (like starting a new trial)
         currentPattern = geomDSL.blank();
+        if (brushInterfaceHandle && typeof brushInterfaceHandle.clear === 'function') {
+            brushInterfaceHandle.clear();
+        }
         operationsHistory = [];
         workflowSelections = [];
         pendingBinaryOp = null;
@@ -662,6 +700,9 @@ function clearWorkspace() {
     }
     
     currentPattern = geomDSL.blank();
+    if (brushInterfaceHandle && typeof brushInterfaceHandle.clear === 'function') {
+        brushInterfaceHandle.clear();
+    }
     operationsHistory = [];
     favorites = [];
     workflowSelections = [];
@@ -1220,7 +1261,7 @@ function applyPrimitive(name) {
         return;
     }
     
-    const pat = geomDSL[name]();
+    const pat = getPrimitivePatternByName(name);
     
     if (pendingBinaryOp) {
         const { aSource, bSource } = resolveBinaryOperandSources();
@@ -1250,6 +1291,115 @@ function applyPrimitive(name) {
     
     renderWorkflow();
     updateAllButtonStates();
+}
+
+function applyCustomPattern(pattern) {
+    logButtonClick('primitive', 'brush_custom', {
+        pendingBinary: !!pendingBinaryOp,
+        pendingUnary: !!pendingUnaryOp,
+        pointsCount: brushSystem.countPoints(pattern)
+    });
+
+    if (!pendingBinaryOp && !pendingUnaryOp) {
+        showToast('⚠️ Please select an operation (binary or unary) before using brush pattern.', 'warning');
+        return;
+    }
+
+    const pat = Array.isArray(pattern) ? JSON.parse(JSON.stringify(pattern)) : brushSystem.blank();
+
+    if (pendingBinaryOp) {
+        const { aSource, bSource } = resolveBinaryOperandSources();
+        if (aSource && bSource) {
+            showToast('Two operands are already selected. Reset or confirm the current operation before adding another.', 'warning');
+            return;
+        }
+
+        if (!aSource) {
+            inlinePreview.aPattern = pat;
+            inlinePreview.aIndex = null;
+        } else if (!bSource) {
+            inlinePreview.bPattern = pat;
+            inlinePreview.bIndex = null;
+        }
+        createBinaryPreview();
+    } else if (pendingUnaryOp) {
+        unaryPreviewState.source = {
+            type: 'primitive',
+            index: null,
+            pattern: pat
+        };
+        unaryModeJustEntered = false;
+        workflowSelections = [];
+        createUnaryPreview();
+    }
+
+    renderWorkflow();
+    updateAllButtonStates();
+}
+
+function updatePrimitiveConditionUI() {
+    // Condition is intentionally hidden from participant UI.
+}
+
+function updatePrimitiveButtonsForCondition() {
+    const buttons = Array.from(document.querySelectorAll('.primitives-grid-inline .primitive-btn'));
+    const primitiveGrid = document.querySelector('.primitives-grid-inline');
+    const brushPanel = document.getElementById('brushPanel');
+    const pointCounter = document.getElementById('pointCounter');
+    const configs = activePrimitiveCondition === PRIMITIVE_CONDITION_B
+        ? [
+            { name: 'blank', title: 'Create blank pattern' }
+        ]
+        : GEOMETRIC_PRIMITIVE_NAMES.map(name => ({ name, title: name.replaceAll('_', ' ') }));
+
+    buttons.forEach((btn, idx) => {
+        const iconSpan = btn.querySelector('.btn-icon');
+        const config = configs[idx];
+        if (!config) {
+            btn.style.display = 'none';
+            btn.setAttribute('aria-hidden', 'true');
+            return;
+        }
+        btn.style.display = '';
+        btn.removeAttribute('aria-hidden');
+        btn.setAttribute('data-op', config.name);
+        btn.setAttribute('onclick', `applyPrimitive('${config.name}')`);
+        btn.title = config.title;
+        if (iconSpan) {
+            iconSpan.innerHTML = '';
+            iconSpan.appendChild(renderThumbnail(getPrimitivePatternByName(config.name), 3.5));
+        }
+    });
+
+    if (brushPanel) {
+        brushPanel.style.display = activePrimitiveCondition === PRIMITIVE_CONDITION_B ? 'flex' : 'none';
+    }
+    if (pointCounter) {
+        pointCounter.style.display = activePrimitiveCondition === PRIMITIVE_CONDITION_B ? 'inline-block' : 'none';
+    }
+    if (primitiveGrid) {
+        primitiveGrid.classList.toggle('is-hidden', activePrimitiveCondition === PRIMITIVE_CONDITION_B);
+    }
+
+    if (activePrimitiveCondition === PRIMITIVE_CONDITION_B) {
+        if (!brushInterfaceHandle) {
+            brushInterfaceHandle = initializeBrushInterface();
+        }
+    }
+}
+
+function setPrimitiveCondition(condition, options = {}) {
+    const { persist = true } = options;
+    activePrimitiveCondition = normalizePrimitiveCondition(condition);
+    if (persist) {
+        localStorage.setItem('primitiveCondition', activePrimitiveCondition);
+    }
+    updatePrimitiveConditionUI();
+    updatePrimitiveButtonsForCondition();
+}
+
+function initializePrimitiveConditionControls() {
+    setPrimitiveCondition(resolveInitialPrimitiveCondition(), { persist: false });
 }
 
 function selectUnaryOp(name) {
@@ -2094,6 +2244,8 @@ function initializeApp() {
     initializeSessionRecord();
     
     initializePrimitiveIcons();
+    initializePrimitiveConditionControls();
+    globalScope.applyCustomPattern = applyCustomPattern;
     initializePreviewControllers();
     bindButtonInteractions();
     registerKeyboardShortcuts();
