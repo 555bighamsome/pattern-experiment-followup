@@ -1091,7 +1091,7 @@ function renderStimulusOverview() {
         actions.className = 'stimulus-card-actions';
         const status = document.createElement('div');
         status.className = 'stimulus-card-status';
-        status.textContent = isCompleted ? 'Completed' : (isCurrent ? 'Selected' : 'Not solved');
+        status.textContent = isCompleted ? 'Completed' : '';
 
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -1102,7 +1102,9 @@ function renderStimulusOverview() {
         btn.addEventListener('click', () => pickNextStimulus(item.actualIndex));
 
         actions.appendChild(btn);
-        actions.appendChild(status);
+        if (status.textContent) {
+            actions.appendChild(status);
+        }
         card.appendChild(header);
         card.appendChild(thumb);
         card.appendChild(actions);
@@ -1113,6 +1115,7 @@ function renderStimulusOverview() {
 function openStimulusOverview(options = {}) {
     const { required = false, isFirstPick = false } = options;
     const modal = document.getElementById('stimulusOverviewModal');
+    const experimentContent = document.getElementById('experimentContent');
     const closeBtn = document.getElementById('closeStimulusOverviewBtn');
     const subtitle = document.querySelector('.stimulus-overview-subtitle');
     if (!modal) return;
@@ -1126,13 +1129,20 @@ function openStimulusOverview(options = {}) {
     }
     renderStimulusOverview();
     modal.style.display = 'flex';
+    if (experimentContent) {
+        experimentContent.classList.add('modal-open');
+    }
 }
 
 function closeStimulusOverview() {
     if (targetSelectionRequired) return;
     const modal = document.getElementById('stimulusOverviewModal');
+    const experimentContent = document.getElementById('experimentContent');
     if (!modal) return;
     modal.style.display = 'none';
+    if (experimentContent) {
+        experimentContent.classList.remove('modal-open');
+    }
 }
 
 function initializeStimulusOverviewControls() {
