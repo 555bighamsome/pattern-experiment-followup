@@ -2,36 +2,75 @@ import { SIZE, CELL_SIZE } from './state.js';
 
 const geomDSL = {
     blank: () => Array(SIZE).fill(0).map(() => Array(SIZE).fill(0)),
-    line_horizontal: (row = Math.floor(SIZE / 2)) => {
-        const pattern = geomDSL.blank();
-        pattern[row].fill(1);
-        return pattern;
-    },
-    line_vertical: (col = Math.floor(SIZE / 2)) => {
-        const pattern = geomDSL.blank();
-        for (let i = 0; i < SIZE; i++) pattern[i][col] = 1;
-        return pattern;
-    },
+    
+    triangle: () => [
+        [0, 0, 1, 1, 1, 1, 1, 1, 0, 0],
+        [0, 0, 0, 1, 1, 1, 1, 0, 0, 0],
+        [0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    ],
+    
+    diag_square: () => [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    ],
+    
+    border_square: () => [
+        [0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    ],
+    
+    middle_square: () => [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    ],
+    
+    center_square: () => [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    ],
+    
     diagonal: () => {
         const pattern = geomDSL.blank();
         for (let i = 0; i < SIZE; i++) pattern[i][i] = 1;
-        return pattern;
-    },
-    square: () => {
-        const pattern = geomDSL.blank();
-        for (let i = 0; i < SIZE; i++) {
-            pattern[0][i] = pattern[SIZE - 1][i] = 1;
-            pattern[i][0] = pattern[i][SIZE - 1] = 1;
-        }
-        return pattern;
-    },
-    triangle: () => {
-        const pattern = geomDSL.blank();
-        for (let i = 0; i < SIZE; i++) {
-            for (let j = 0; j <= i; j++) {
-                pattern[i][j] = 1;
-            }
-        }
         return pattern;
     }
 };
@@ -95,10 +134,12 @@ const OP_ABBREVIATIONS = {
     reflect_horizontal: 'refl_h',
     reflect_vertical: 'refl_v',
     reflect_diag: 'refl_d',
-    line_horizontal: 'line_h',
-    line_vertical: 'line_v',
     diagonal: 'diag',
-    triangle: 'tri'
+    triangle: 'tri',
+    diag_square: 'diag_sq',
+    border_square: 'bord_sq',
+    middle_square: 'mid_sq',
+    center_square: 'ctr_sq'
 };
 
 function getOperationAbbreviation(name) {
@@ -334,7 +375,7 @@ function renderPrimitiveIcon(pattern, scale = 3.5) {
 }
 
 function initializePrimitiveIcons() {
-    const primitiveNames = ['blank', 'line_horizontal', 'line_vertical', 'diagonal', 'square', 'triangle'];
+    const primitiveNames = ['blank', 'triangle', 'diag_square', 'border_square', 'middle_square', 'center_square', 'diagonal'];
     primitiveNames.forEach((name) => {
         const btn = document.querySelector(`button[data-op="${name}"]`);
         if (!btn) return;
@@ -378,9 +419,19 @@ function initializeBrushInterface() {
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
+            // Calculate which cell was clicked
             const col = Math.floor(x / BRUSH_CELL_SIZE);
             const row = Math.floor(y / BRUSH_CELL_SIZE);
             if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) return;
+            
+            // Check if click is too close to cell boundary to avoid mis-clicks
+            const BOUNDARY_MARGIN = 2; // pixels from edge to ignore
+            const xInCell = x - (col * BRUSH_CELL_SIZE);
+            const yInCell = y - (row * BRUSH_CELL_SIZE);
+            if (xInCell < BOUNDARY_MARGIN || xInCell > BRUSH_CELL_SIZE - BOUNDARY_MARGIN ||
+                yInCell < BOUNDARY_MARGIN || yInCell > BRUSH_CELL_SIZE - BOUNDARY_MARGIN) {
+                return; // Too close to boundary, ignore click
+            }
 
             const currentCount = brushSystem.countPoints(currentBrushPattern);
             const isAdding = !currentBrushPattern[row]?.[col];

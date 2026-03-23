@@ -2047,7 +2047,7 @@ const tutorialSteps = [
             <p>Click "Next" to continue.</p>`,
         onEnter: () => {
             const target = document.getElementById('targetPattern');
-            if (target) renderPattern(geomDSL.square(), target);
+            if (target) renderPattern(geomDSL.center_square(), target);
         },
         waitForAction: false,
         checkCompletion: null

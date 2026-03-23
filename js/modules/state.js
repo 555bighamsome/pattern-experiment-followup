@@ -1,6 +1,6 @@
 const SIZE = 10;
 const CELL_SIZE = 40;
-const POINTS_MAX = 25; // 1 point per trial (25 trials total, Pattern-23 removed)
+const POINTS_MAX = 20; // 1 point per trial (20 trials total)
 
 // Normalize condition string to handle case variations and whitespace
 function normalizeCondition(condition) {

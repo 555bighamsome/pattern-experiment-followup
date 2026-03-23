@@ -22,6 +22,11 @@ import {
     shuffleArray,
     getTestCaseCount
 } from './modules/testData.js';
+import {
+    reconstructProgram,
+    generateExecutableCode,
+    validateProgram
+} from './modules/programReconstructor.js';
 
 // (favorites popup legacy removed)
 
@@ -30,7 +35,7 @@ appState.unaryPreviewState = createUnaryPreviewState();
 
 const PRIMITIVE_CONDITION_A = 'A';
 const PRIMITIVE_CONDITION_B = 'B';
-const GEOMETRIC_PRIMITIVE_NAMES = ['blank', 'line_horizontal', 'line_vertical', 'diagonal', 'square', 'triangle'];
+const GEOMETRIC_PRIMITIVE_NAMES = ['blank', 'triangle', 'diag_square', 'border_square', 'middle_square', 'center_square', 'diagonal'];
 
 let activePrimitiveCondition = PRIMITIVE_CONDITION_A;
 let stimulusCatalog = [];
@@ -614,8 +619,11 @@ function useFavoritePattern(id, pattern) {
         
         const context = pendingBinaryOp ? 'binary' : (pendingUnaryOp ? 'unary' : 'none');
         
+        // Count helper button clicks (regardless of whether it becomes a step)
+        currentTrialRecord.statistics.helperClickCount++;
+        
         currentTrialRecord.favoriteActions.push({
-            action: 'use',
+            action: 'click',  // Changed from 'use' to 'click' to indicate button click
             favoriteId: id,
             context: context,
             operation: favorite ? favorite.op : undefined,
@@ -626,7 +634,7 @@ function useFavoritePattern(id, pattern) {
                 b: favorite.meta.operands.b ? JSON.parse(JSON.stringify(favorite.meta.operands.b)) : undefined,
                 input: favorite.meta.operands.input ? JSON.parse(JSON.stringify(favorite.meta.operands.input)) : undefined
             } : undefined,
-            usedAs: context === 'binary' ? (inlinePreview.aPattern ? 'operandB' : 'operandA') : (context === 'unary' ? 'unaryInput' : 'unknown'),
+            willBeUsedAs: context === 'binary' ? (inlinePreview.aPattern ? 'operandB' : 'operandA') : (context === 'unary' ? 'unaryInput' : 'unknown'),
             timestamp: Date.now()
         });
     }
@@ -913,7 +921,17 @@ function loadTrial(index) {
         submitted: false,
         pointsEarned: 0,
         pointsAwarded: 0,
-        startedAt: trialStartTime
+        startedAt: trialStartTime,
+        // Enhanced tracking for cognitive analysis
+        statistics: {
+            totalSteps: 0,
+            primitiveUsageCount: 0,      // Direct primitive button clicks that became steps
+            helperUsageCount: 0,          // Helper patterns that became steps
+            workspaceReuseCount: 0,       // Workspace selections that became steps
+            helperClickCount: 0,          // Total helper button clicks (including unused)
+            primitiveClickCount: 0,       // Total primitive button clicks (including unused)
+            operationTypes: {}            // Count by operation type (add, subtract, etc.)
+        }
     };
     allTrialsData.push(currentTrialRecord);
     
@@ -1173,6 +1191,11 @@ function applyPrimitive(name) {
         pendingUnary: !!pendingUnaryOp
     });
 
+    // Count primitive button clicks for statistics
+    if (currentTrialRecord) {
+        currentTrialRecord.statistics.primitiveClickCount++;
+    }
+
     // Primitives provide operands for pending operations (binary or unary)
     if (!pendingBinaryOp && !pendingUnaryOp) {
         showToast('⚠️ Please select an operation (binary or unary) before choosing a primitive.', 'warning');
@@ -1337,11 +1360,55 @@ function addOperation(op, metadata = {}) {
                 a: metadata.operands.a ? JSON.parse(JSON.stringify(metadata.operands.a)) : undefined,
                 b: metadata.operands.b ? JSON.parse(JSON.stringify(metadata.operands.b)) : undefined,
                 input: metadata.operands.input ? JSON.parse(JSON.stringify(metadata.operands.input)) : undefined
-            } : undefined
+            } : undefined,
+            // Enhanced source tracking for reconstruction
+            sourceTracking: metadata.sourceTracking || undefined
         };
         currentTrialRecord.steps.push(stepEntry);
         currentTrialRecord.operations.push(op);
         currentTrialRecord.stepsCount = currentTrialRecord.steps.length;
+        
+        // Update statistics
+        if (metadata.sourceTracking) {
+            currentTrialRecord.statistics.totalSteps++;
+            
+            // Track operand sources
+            const tracking = metadata.sourceTracking;
+            if (tracking.operandA) {
+                if (tracking.operandA.type === 'primitive') {
+                    currentTrialRecord.statistics.primitiveUsageCount++;
+                } else if (tracking.operandA.type === 'helper') {
+                    currentTrialRecord.statistics.helperUsageCount++;
+                } else if (tracking.operandA.type === 'workspace') {
+                    currentTrialRecord.statistics.workspaceReuseCount++;
+                }
+            }
+            if (tracking.operandB) {
+                if (tracking.operandB.type === 'primitive') {
+                    currentTrialRecord.statistics.primitiveUsageCount++;
+                } else if (tracking.operandB.type === 'helper') {
+                    currentTrialRecord.statistics.helperUsageCount++;
+                } else if (tracking.operandB.type === 'workspace') {
+                    currentTrialRecord.statistics.workspaceReuseCount++;
+                }
+            }
+            if (tracking.unaryInput) {
+                if (tracking.unaryInput.type === 'primitive') {
+                    currentTrialRecord.statistics.primitiveUsageCount++;
+                } else if (tracking.unaryInput.type === 'helper') {
+                    currentTrialRecord.statistics.helperUsageCount++;
+                } else if (tracking.unaryInput.type === 'workspace') {
+                    currentTrialRecord.statistics.workspaceReuseCount++;
+                }
+            }
+            
+            // Track operation types
+            if (tracking.operationType) {
+                const opType = tracking.operationType;
+                currentTrialRecord.statistics.operationTypes[opType] = 
+                    (currentTrialRecord.statistics.operationTypes[opType] || 0) + 1;
+            }
+        }
     }
     updateOperationsLog();
     updateAllButtonStates();
@@ -1840,9 +1907,29 @@ function applySelectedBinary() {
 
     // 在 Program 中希望以“缩略图表达式”显示，因此 operation 文本保留，同时在 entry 上放置结构化字段
     const opText = `${pendingBinaryOp}(${labelA}, ${labelB})`;
+    
+    // Collect source tracking information for operands
+    const sourceA = {
+        type: inlinePreview.aFromFavorite ? 'helper' : 
+              (inlinePreview.aIndex !== null ? 'workspace' : 'primitive'),
+        index: inlinePreview.aIndex !== null ? inlinePreview.aIndex : null,
+        isHelper: inlinePreview.aFromFavorite || false
+    };
+    const sourceB = {
+        type: inlinePreview.bFromFavorite ? 'helper' : 
+              (inlinePreview.bIndex !== null ? 'workspace' : 'primitive'),
+        index: inlinePreview.bIndex !== null ? inlinePreview.bIndex : null,
+        isHelper: inlinePreview.bFromFavorite || false
+    };
+    
     addOperation(opText, {
         opFn: pendingBinaryOp,
-        operands: { a: a, b: b }
+        operands: { a: a, b: b },
+        sourceTracking: {
+            operationType: pendingBinaryOp,
+            operandA: sourceA,
+            operandB: sourceB
+        }
     });
     const last = operationsHistory[operationsHistory.length - 1];
     last.opFn = pendingBinaryOp;
@@ -2058,10 +2145,22 @@ function applySelectedUnary() {
         ? JSON.parse(JSON.stringify(sourceSnapshot))
         : null;
 
+    // Determine source type for tracking
+    const sourceInput = {
+        type: operandSourceMeta && operandSourceMeta.type === 'favorite' ? 'helper' :
+              (operandSourceMeta && typeof operandSourceMeta.index === 'number' ? 'workspace' : 'primitive'),
+        index: operandSourceMeta && typeof operandSourceMeta.index === 'number' ? operandSourceMeta.index : null,
+        isHelper: operandSourceMeta && operandSourceMeta.type === 'favorite'
+    };
+
     const opText = `${pendingUnaryOp}(${operandLabel})`;
     addOperation(opText, {
         opFn: pendingUnaryOp,
-        operands: { input: operandCopy }
+        operands: { input: operandCopy },
+        sourceTracking: {
+            operationType: pendingUnaryOp,
+            unaryInput: sourceInput
+        }
     });
     const last = operationsHistory[operationsHistory.length - 1];
     last.opFn = pendingUnaryOp;
@@ -2542,7 +2641,7 @@ function submitAnswer() {
     let pointsAwardedThisSubmission = 0;
     const eligibleForPoints = match && !previouslySuccessful;
     if (eligibleForPoints) {
-        pointsAwardedThisSubmission = pointsPerCorrect; // Award 10 points per correct answer
+        pointsAwardedThisSubmission = pointsPerCorrect; // Award 1 point per correct answer
         totalPoints += pointsAwardedThisSubmission;
         updatePointsDisplay();
     }
@@ -2563,6 +2662,43 @@ function submitAnswer() {
         solvedActualIndices.add(actualIndex);
         if (!completionOrderByActualIndex.has(actualIndex)) {
             completionOrderByActualIndex.set(actualIndex, completionOrderByActualIndex.size + 1);
+        }
+        
+        // Reconstruct complete program for verification and replay
+        try {
+            const reconstruction = reconstructProgram(currentTrialRecord.steps, targetPattern);
+            const validation = validateProgram(reconstruction);
+            const executableCode = reconstruction.success ? generateExecutableCode(reconstruction.program) : null;
+            
+            currentTrialRecord.programReconstruction = {
+                success: reconstruction.success,
+                program: reconstruction.program,
+                finalPattern: reconstruction.finalPattern,
+                matchesTarget: reconstruction.matches,
+                validation: validation,
+                executableCode: executableCode,
+                reconstructedAt: Date.now()
+            };
+            
+            // Log any discrepancies
+            if (reconstruction.success && reconstruction.finalPattern) {
+                const reconstructionMatches = JSON.stringify(reconstruction.finalPattern) === JSON.stringify(currentPattern);
+                if (!reconstructionMatches) {
+                    console.warn('Program reconstruction mismatch detected:', {
+                        trial: currentTrialRecord.trial,
+                        currentPattern: currentPattern,
+                        reconstructedPattern: reconstruction.finalPattern
+                    });
+                    currentTrialRecord.programReconstruction.warning = 'Reconstructed pattern does not match current pattern';
+                }
+            }
+        } catch (error) {
+            console.error('Program reconstruction failed:', error);
+            currentTrialRecord.programReconstruction = {
+                success: false,
+                error: error.message,
+                reconstructedAt: Date.now()
+            };
         }
     }
 
