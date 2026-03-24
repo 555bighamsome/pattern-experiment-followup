@@ -1,29 +1,34 @@
 import { SIZE, CELL_SIZE } from './state.js';
 
-const geomDSL = {
+// ============================================
+// TUTORIAL PRIMITIVES (for tutorial.html only)
+// ============================================
+const tutorialPrimitives = {
     blank: () => Array(SIZE).fill(0).map(() => Array(SIZE).fill(0)),
     
-    // Tutorial primitives (old version for compatibility)
     line_horizontal: (row = Math.floor(SIZE / 2)) => {
-        const pattern = geomDSL.blank();
+        const pattern = Array(SIZE).fill(0).map(() => Array(SIZE).fill(0));
         pattern[row].fill(1);
         return pattern;
     },
+    
     line_vertical: (col = Math.floor(SIZE / 2)) => {
-        const pattern = geomDSL.blank();
+        const pattern = Array(SIZE).fill(0).map(() => Array(SIZE).fill(0));
         for (let i = 0; i < SIZE; i++) pattern[i][col] = 1;
         return pattern;
     },
+    
     square: () => {
-        const pattern = geomDSL.blank();
+        const pattern = Array(SIZE).fill(0).map(() => Array(SIZE).fill(0));
         for (let i = 0; i < SIZE; i++) {
             pattern[0][i] = pattern[SIZE - 1][i] = 1;
             pattern[i][0] = pattern[i][SIZE - 1] = 1;
         }
         return pattern;
     },
+    
     triangle: () => {
-        const pattern = geomDSL.blank();
+        const pattern = Array(SIZE).fill(0).map(() => Array(SIZE).fill(0));
         for (let i = 0; i < SIZE; i++) {
             for (let j = 0; j <= i; j++) {
                 pattern[i][j] = 1;
@@ -31,13 +36,18 @@ const geomDSL = {
         }
         return pattern;
     },
+    
     diagonal: () => {
-        const pattern = geomDSL.blank();
+        const pattern = Array(SIZE).fill(0).map(() => Array(SIZE).fill(0));
         for (let i = 0; i < SIZE; i++) pattern[i][i] = 1;
         return pattern;
-    },
-    
-    // Experiment primitives (new version for task/freeplay)
+    }
+};
+
+// ============================================
+// EXPERIMENT PRIMITIVES (for task.html and freeplay.html)
+// ============================================
+const experimentPrimitives = {
     triangle_new: () => [
         [0, 0, 1, 1, 1, 1, 1, 1, 0, 0],
         [0, 0, 0, 1, 1, 1, 1, 0, 0, 0],
@@ -103,11 +113,28 @@ const geomDSL = {
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     ],
     
-    diagonal: () => {
-        const pattern = geomDSL.blank();
-        for (let i = 0; i < SIZE; i++) pattern[i][i] = 1;
-        return pattern;
-    }
+    // Diagonal with matrix representation for experiments
+    diagonal: () => [
+        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+    ]
+};
+
+// ============================================
+// UNIFIED geomDSL (for backward compatibility)
+// ============================================
+// This merges both tutorial and experiment primitives
+const geomDSL = {
+    ...tutorialPrimitives,
+    ...experimentPrimitives
 };
 
 const brushSystem = {
@@ -558,6 +585,8 @@ function initializeBrushInterface() {
 }
 
 export {
+    tutorialPrimitives,
+    experimentPrimitives,
     geomDSL,
     brushSystem,
     transDSL,
