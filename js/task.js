@@ -35,7 +35,7 @@ appState.unaryPreviewState = createUnaryPreviewState();
 
 const PRIMITIVE_CONDITION_A = 'A';
 const PRIMITIVE_CONDITION_B = 'B';
-const GEOMETRIC_PRIMITIVE_NAMES = ['blank', 'triangle', 'diag_square', 'border_square', 'middle_square', 'center_square', 'diagonal'];
+const GEOMETRIC_PRIMITIVE_NAMES = ['triangle_new', 'diag_square', 'border_square', 'middle_square', 'center_square', 'diagonal'];
 
 let activePrimitiveCondition = PRIMITIVE_CONDITION_A;
 let stimulusCatalog = [];
