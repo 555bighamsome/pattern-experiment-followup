@@ -96,14 +96,15 @@
 <body class="dark-page">
     <div id="experimentContent">
         <div class="progress-bar" style="display: flex; justify-content: space-between; align-items: center;">
-            <div class="progress-info">
-                Free Play Mode
+            <div class="progress-info" style="display: flex; align-items: center; gap: 1rem;">
+                <span>Free Play Mode</span>
+                <span id="freeplayTimer" style="color: #94a3b8; font-size: 0.9rem;">0:00</span>
             </div>
             <div style="display: flex; gap: 0.5rem;">
                 <button class="btn" onclick="viewGallery()" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: #8b5cf6; color: white; border: none;">
                     View Gallery
                 </button>
-                <button class="btn" onclick="endFreePlayMode()" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: #ef4444; color: white; border: none;">
+                <button class="btn" id="endFreePlayBtn" onclick="endFreePlayMode()" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: #ef4444; color: white; border: none;">
                     End Free Play
                 </button>
             </div>
@@ -190,7 +191,7 @@
                         <button class="primitive-btn" data-op="blank" onclick="applyPrimitive('blank')" title="Create blank pattern">
                             <span class="btn-icon"></span>
                         </button>
-                        <button class="primitive-btn" data-op="triangle" onclick="applyPrimitive('triangle')" title="Triangle shape">
+                        <button class="primitive-btn" data-op="triangle_new" onclick="applyPrimitive('triangle_new')" title="Triangle shape">
                             <span class="btn-icon"></span>
                         </button>
                         <button class="primitive-btn" data-op="diag_square" onclick="applyPrimitive('diag_square')" title="Diagonal square">

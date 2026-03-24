@@ -15,42 +15,22 @@ function setDynamicContent() {
     const activityOrderContainer = document.getElementById('activity-order-container');
     const submitInstruction = document.getElementById('submit-instruction');
     
-    if (condition === 'freeplayFirst') {
-        // Free play first: tutorial → free play → puzzles
-        if (activityOrderContainer) {
-            activityOrderContainer.innerHTML = `
-                <p>After getting familiarized with the interface, you will:</p>
-                <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
-                    <li style="margin-bottom: 0.5rem;">
-                        <strong>Free Play Mode (10 minutes):</strong> Create patterns however you like—no targets, just experiment freely with shapes and operations. Save your creations to a personal gallery. <em style="color: #f59e0b;">You will have 10 minutes to explore and create.</em>
-                    </li>
-                    <li style="margin-bottom: 0.5rem;">
-                        <strong>Pattern Matching (no time limit):</strong> Recreate target patterns as closely as you can using the tools and techniques you've learned. <em style="color: #10b981;">Work at your own pace.</em>
-                    </li>
-                </ol>
-            `;
-        }
-        if (submitInstruction) {
-            submitInstruction.innerHTML = '<strong>For pattern matching:</strong> Submit when you\'ve matched the target exactly, or as closely as you can. <strong>For free play:</strong> Submit when you are happy with your creation.';
-        }
-    } else {
-        // Puzzle first: tutorial → puzzles → free play
-        if (activityOrderContainer) {
-            activityOrderContainer.innerHTML = `
-                <p>After getting familiarized with the interface, you will:</p>
-                <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
-                    <li style="margin-bottom: 0.5rem;">
-                        <strong>Pattern Matching (no time limit):</strong> Recreate target patterns as closely as you can using primitive shapes and operations. <em style="color: #10b981;">Work at your own pace.</em>
-                    </li>
-                    <li style="margin-bottom: 0.5rem;">
-                        <strong>Free Play Mode (10 minutes):</strong> Create patterns however you like—no targets, just experiment freely with shapes and operations. Save your creations to a personal gallery. <em style="color: #f59e0b;">You will have 10 minutes to explore and create.</em>
-                    </li>
-                </ol>
-            `;
-        }
-        if (submitInstruction) {
-            submitInstruction.innerHTML = '<strong>For pattern matching:</strong> Submit when you\'ve matched the target exactly, or as closely as you can. <strong>For free play:</strong> Submit when you are happy with your creation.';
-        }
+    // puzzleFirst: tutorial → puzzles → free play
+    if (activityOrderContainer) {
+        activityOrderContainer.innerHTML = `
+            <p>After getting familiarized with the interface, you will:</p>
+            <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                <li style="margin-bottom: 0.5rem;">
+                    <strong>Pattern Matching (no time limit):</strong> Recreate target patterns as closely as you can using primitive shapes and operations. <em style="color: #10b981;">Work at your own pace.</em>
+                </li>
+                <li style="margin-bottom: 0.5rem;">
+                    <strong>Free Play Mode (no time limit):</strong> Create patterns however you like—no targets, just experiment freely with shapes and operations. Save your creations to a personal gallery. <em style="color: #3b82f6;">Take as much time as you need to explore.</em>
+                </li>
+            </ol>
+        `;
+    }
+    if (submitInstruction) {
+        submitInstruction.innerHTML = '<strong>For pattern matching:</strong> Submit when you\'ve matched the target exactly, or as closely as you can. <strong>For free play:</strong> Submit when you are happy with your creation.';
     }
 }
 

@@ -11,7 +11,6 @@
             if (!condition) return null;
             const normalized = condition.trim().toLowerCase();
             if (normalized === 'puzzlefirst') return 'puzzleFirst';
-            if (normalized === 'freeplayfirst') return 'freeplayFirst';
             return condition.trim();
         }
 
@@ -38,7 +37,7 @@
         
         if (conditionParam) {
             conditionParam = normalizeCondition(conditionParam);
-            if (conditionParam === 'puzzleFirst' || conditionParam === 'freeplayFirst') {
+            if (conditionParam === 'puzzleFirst') {
                 localStorage.setItem('experimentCondition', conditionParam);
                 console.log('Condition set via URL:', conditionParam);
             }

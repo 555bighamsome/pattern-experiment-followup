@@ -117,30 +117,16 @@ function showCompletionModal() {
     const freeplayBtn = document.getElementById('enterFreePlayBtn');
     const emailInstruction = document.getElementById('taskEmailInstruction');
     
-    if (condition === 'freeplayFirst') {
-        // freeplayFirst: This is the final phase, only show download button
-        if (downloadBtn) {
-            downloadBtn.textContent = '⬇ Download All Data & Exit';
-            downloadBtn.style.display = 'block';
-        }
-        if (freeplayBtn) {
-            freeplayBtn.style.display = 'none'; // Hide free play button
-        }
-        if (emailInstruction) {
-            emailInstruction.style.display = 'block'; // Show email instruction (final phase)
-        }
-    } else {
-        // puzzleFirst: Only show continue to freeplay button, hide download button
-        if (downloadBtn) {
-            downloadBtn.style.display = 'none'; // Hide download button
-        }
-        if (freeplayBtn) {
-            freeplayBtn.textContent = '→ Continue to Free Play Mode';
-            freeplayBtn.style.display = 'block';
-        }
-        if (emailInstruction) {
-            emailInstruction.style.display = 'none'; // Hide email instruction (not final phase)
-        }
+    // puzzleFirst: Only show continue to freeplay button, hide download button
+    if (downloadBtn) {
+        downloadBtn.style.display = 'none'; // Hide download button
+    }
+    if (freeplayBtn) {
+        freeplayBtn.textContent = '→ Continue to Free Play Mode';
+        freeplayBtn.style.display = 'block';
+    }
+    if (emailInstruction) {
+        emailInstruction.style.display = 'none'; // Hide email instruction (not final phase)
     }
     
     modal.style.display = 'flex';
@@ -235,12 +221,6 @@ function downloadTaskDataOnly() {
     let condition = localStorage.getItem('experimentCondition') || 'puzzleFirst';
     condition = normalizeCondition(condition);
     
-    // If freeplayFirst, this is the final download - combine all data
-    if (condition === 'freeplayFirst') {
-        downloadExperimentData();
-        return;
-    }
-    
     // puzzleFirst: Download task data only
     const sanitizedTrials = allTrialsData
         .map(sanitizeTrialRecord)
@@ -284,7 +264,6 @@ function normalizeCondition(condition) {
     if (!condition) return 'puzzleFirst';
     const normalized = condition.trim().toLowerCase();
     if (normalized === 'puzzlefirst') return 'puzzleFirst';
-    if (normalized === 'freeplayfirst') return 'freeplayFirst';
     return condition.trim();
 }
 
@@ -311,57 +290,37 @@ function downloadExperimentData() {
 
     let experimentData;
     
-    // If freeplayFirst, combine with freeplay data
-    if (condition === 'freeplayFirst') {
-        const freeplayDataStr = localStorage.getItem('freeplayExperimentData');
-        let freeplayData = null;
-        if (freeplayDataStr) {
-            try {
-                freeplayData = JSON.parse(freeplayDataStr);
-            } catch (e) {
-                console.error('Failed to parse freeplay data:', e);
-            }
+    // puzzleFirst flow: combine task and freeplay data
+    const freeplayDataStr = localStorage.getItem('freeplayExperimentData');
+    let freeplayData = null;
+    if (freeplayDataStr) {
+        try {
+            freeplayData = JSON.parse(freeplayDataStr);
+        } catch (e) {
+            console.error('Failed to parse freeplay data:', e);
         }
-        
-        experimentData = {
-            metadata: {
-                experimentName: 'Pattern DSL Experiment - Complete',
-                experimentCondition: condition,
-                primitiveCondition: activePrimitiveCondition,
-                participantChosenOrder,
-                completionTime: new Date().toISOString(),
-                freeplayCompletionTime: freeplayData ? freeplayData.completionTime : 'unknown',
-                browserInfo: {
-                    language: navigator.language
-                }
-            },
-            freePlayData: freeplayData || { note: 'No freeplay data found' },
-            taskData: {
-                trials: sanitizedTrials,
-                summary: {
-                    successfulTrials: sanitizedTrials.filter(t => t && t.success === true).length
-                }
+    }
+    
+    experimentData = {
+        metadata: {
+            experimentName: 'Pattern DSL Experiment - Complete',
+            experimentCondition: condition,
+            primitiveCondition: activePrimitiveCondition,
+            participantChosenOrder,
+            completionTime: new Date().toISOString(),
+            freeplayCompletionTime: freeplayData ? freeplayData.completionTime : 'unknown',
+            browserInfo: {
+                language: navigator.language
             }
-        };
-    } else {
-        // puzzleFirst: task data only (will be combined with freeplay later in freeplay.js)
-        experimentData = {
-            metadata: {
-                experimentName: 'Pattern DSL Experiment',
-                experimentCondition: condition,
-                primitiveCondition: activePrimitiveCondition,
-                participantChosenOrder,
-                completionTime: new Date().toISOString(),
-                browserInfo: {
-                    language: navigator.language
-                }
-            },
+        },
+        freePlayData: freeplayData || { note: 'No freeplay data found' },
+        taskData: {
             trials: sanitizedTrials,
             summary: {
                 successfulTrials: sanitizedTrials.filter(t => t && t.success === true).length
             }
-        };
-    }
+        }
+    };
 
     // Convert to JSON string with formatting
     const jsonString = JSON.stringify(experimentData, null, 2);

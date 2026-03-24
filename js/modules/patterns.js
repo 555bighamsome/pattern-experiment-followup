@@ -3,7 +3,42 @@ import { SIZE, CELL_SIZE } from './state.js';
 const geomDSL = {
     blank: () => Array(SIZE).fill(0).map(() => Array(SIZE).fill(0)),
     
-    triangle: () => [
+    // Tutorial primitives (old version for compatibility)
+    line_horizontal: (row = Math.floor(SIZE / 2)) => {
+        const pattern = geomDSL.blank();
+        pattern[row].fill(1);
+        return pattern;
+    },
+    line_vertical: (col = Math.floor(SIZE / 2)) => {
+        const pattern = geomDSL.blank();
+        for (let i = 0; i < SIZE; i++) pattern[i][col] = 1;
+        return pattern;
+    },
+    square: () => {
+        const pattern = geomDSL.blank();
+        for (let i = 0; i < SIZE; i++) {
+            pattern[0][i] = pattern[SIZE - 1][i] = 1;
+            pattern[i][0] = pattern[i][SIZE - 1] = 1;
+        }
+        return pattern;
+    },
+    triangle: () => {
+        const pattern = geomDSL.blank();
+        for (let i = 0; i < SIZE; i++) {
+            for (let j = 0; j <= i; j++) {
+                pattern[i][j] = 1;
+            }
+        }
+        return pattern;
+    },
+    diagonal: () => {
+        const pattern = geomDSL.blank();
+        for (let i = 0; i < SIZE; i++) pattern[i][i] = 1;
+        return pattern;
+    },
+    
+    // Experiment primitives (new version for task/freeplay)
+    triangle_new: () => [
         [0, 0, 1, 1, 1, 1, 1, 1, 0, 0],
         [0, 0, 0, 1, 1, 1, 1, 0, 0, 0],
         [0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
@@ -375,10 +410,11 @@ function renderPrimitiveIcon(pattern, scale = 3.5) {
 }
 
 function initializePrimitiveIcons() {
-    const primitiveNames = ['blank', 'triangle', 'diag_square', 'border_square', 'middle_square', 'center_square', 'diagonal'];
-    primitiveNames.forEach((name) => {
-        const btn = document.querySelector(`button[data-op="${name}"]`);
-        if (!btn) return;
+    // Dynamically initialize all primitive buttons found on the page
+    const primitiveButtons = document.querySelectorAll('button[data-op].primitive-btn');
+    primitiveButtons.forEach((btn) => {
+        const name = btn.getAttribute('data-op');
+        if (!name || !geomDSL[name]) return;
         const iconSpan = btn.querySelector('.btn-icon');
         if (!iconSpan) return;
         iconSpan.innerHTML = '';

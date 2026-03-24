@@ -4,7 +4,6 @@ function normalizeCondition(condition) {
     if (!condition) return 'puzzleFirst';
     const normalized = condition.trim().toLowerCase();
     if (normalized === 'puzzlefirst') return 'puzzleFirst';
-    if (normalized === 'freeplayfirst') return 'freeplayFirst';
     return condition.trim();
 }
 
@@ -30,11 +29,8 @@ passBtn.onclick = () => {
     localStorage.removeItem('favorites');
     console.log('Cleared all tutorial helpers before main experiment');
     
-    if (condition === 'freeplayFirst') {
-        location.href = "freeplay.html";
-    } else {
-        location.href = "task.html";
-    }
+    // puzzleFirst: always go to task first
+    location.href = "task.html";
 };
 retryBtn.onclick = () => location.href = "instruction.html";
 

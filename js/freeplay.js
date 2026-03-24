@@ -2292,13 +2292,22 @@ function bindButtonInteractions() {
         }
     });
     
-    // Start 10-minute auto-end timer (hidden from user)
-    const FREEPLAY_DURATION = 10 * 60 * 1000; // 10 minutes in milliseconds
-    console.log('Starting 10-minute freeplay timer...');
-    setTimeout(() => {
-        console.log('10 minutes elapsed - auto-ending freeplay mode');
-        endFreePlayMode();
-    }, FREEPLAY_DURATION);
+    // Display elapsed time (no minimum - testing version)
+    const timerDisplay = document.getElementById('freeplayTimer');
+    const startTime = Date.now();
+    
+    // Update timer display every second
+    const timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        if (timerDisplay) {
+            timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+    }, 1000);
+    
+    // Store timer interval ID to clear it when ending
+    window.freeplayTimerInterval = timerInterval;
 }
 
 function handleShortcut(event) {
@@ -2356,6 +2365,11 @@ function exportAllSessionData() {
 // End free play mode and show completion modal
 function endFreePlayMode() {
     try {
+        // Clear the timer interval
+        if (window.freeplayTimerInterval) {
+            clearInterval(window.freeplayTimerInterval);
+        }
+        
         // Finalize session recording - IMPORTANT: This data is still recorded for research!
         if (sessionRecord) {
             sessionRecord.endTime = new Date().toISOString();

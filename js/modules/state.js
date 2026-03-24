@@ -12,8 +12,6 @@ function normalizeCondition(condition) {
     // Return standardized format
     if (normalized === 'puzzlefirst') {
         return 'puzzleFirst';
-    } else if (normalized === 'freeplayfirst') {
-        return 'freeplayFirst';
     }
     
     // Return as-is if already in correct format
@@ -25,8 +23,8 @@ function getExperimentCondition() {
     let condition = localStorage.getItem('experimentCondition');
     
     if (!condition) {
-        // Random assignment: 50% puzzleFirst, 50% freeplayFirst
-        condition = Math.random() < 0.5 ? 'puzzleFirst' : 'freeplayFirst';
+        // Only puzzleFirst condition
+        condition = 'puzzleFirst';
         localStorage.setItem('experimentCondition', condition);
         console.log('Assigned new condition:', condition);
     } else {
