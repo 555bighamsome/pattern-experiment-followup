@@ -2318,14 +2318,7 @@ function registerKeyboardShortcuts() {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
-    // Check if we need to clear favorites when switching from puzzle to freeplay
-    if (localStorage.getItem('clearFavoritesOnLoad') === 'true') {
-        localStorage.removeItem('favorites');
-        localStorage.removeItem('patternHelpers');
-        favorites = [];
-        localStorage.removeItem('clearFavoritesOnLoad');
-        console.log('Cleared favorites/helpers when switching from puzzle to freeplay phase');
-    }
+    // puzzleFirst flow: helpers from task will automatically carry over via localStorage
     
     initializeApp();
     
@@ -2375,26 +2368,11 @@ function endFreePlayMode() {
         const totalOps = sessionRecord ? sessionRecord.operationActions.length : 0;
         const helpersUsed = sessionRecord ? Object.keys(sessionRecord.helperUsageCount).length : 0;
         
-        // Normalize condition string to handle case variations and whitespace
-        function normalizeCondition(condition) {
-            if (!condition) return 'puzzleFirst';
-            const normalized = condition.trim().toLowerCase();
-            if (normalized === 'puzzlefirst') return 'puzzleFirst';
-            if (normalized === 'freeplayfirst') return 'freeplayFirst';
-            return condition.trim();
-        }
-        
-        // Check condition to determine next step
-        let condition = localStorage.getItem('experimentCondition') || 'puzzleFirst';
-        condition = normalizeCondition(condition);
-        console.log('Freeplay completed - Condition:', condition);
-        
         // Log for debugging/verification
         console.log('Session completed - Stats collected for research:', {
             patternsCreated: gallery.length,
             totalOperations: totalOps,
-            helpersUsed: helpersUsed,
-            condition: condition
+            helpersUsed: helpersUsed
         });
         
         // Render patterns (display only, stats hidden from user)
@@ -2480,43 +2458,6 @@ function endFreePlayMode() {
             });
         }
         
-        // Update button text based on condition
-        const downloadBtn = document.querySelector('#freeplayCompletionModal button[onclick="downloadCombinedData()"]');
-        if (downloadBtn) {
-            if (condition === 'freeplayFirst') {
-                downloadBtn.innerHTML = '→ Continue to Puzzle Phase';
-                downloadBtn.style.background = '#10b981'; // Green for continue
-            } else {
-                downloadBtn.innerHTML = '⬇ Download Data';
-                downloadBtn.style.background = '#3b82f6'; // Blue for download
-            }
-        }
-        
-        // Update completion message based on condition
-        const completionMsg = document.getElementById('freeplayCompletionMessage');
-        if (completionMsg) {
-            if (condition === 'freeplayFirst') {
-                // Hide the message for freeplayFirst (not the final phase)
-                completionMsg.style.display = 'none';
-            } else {
-                // Show the message for puzzleFirst (this is the final phase)
-                completionMsg.style.display = 'block';
-                completionMsg.textContent = 'Your complete experiment data is ready for download.';
-            }
-        }
-        
-        // Update email instruction based on condition
-        const emailInstruction = document.getElementById('freeplayEmailInstruction');
-        if (emailInstruction) {
-            if (condition === 'freeplayFirst') {
-                // Hide email instruction for freeplayFirst (not the final phase)
-                emailInstruction.style.display = 'none';
-            } else {
-                // Show email instruction for puzzleFirst (this is the final phase)
-                emailInstruction.style.display = 'block';
-            }
-        }
-        
         // Show modal
         const modal = document.getElementById('freeplayCompletionModal');
         if (modal) {
@@ -2531,42 +2472,7 @@ function endFreePlayMode() {
 
 // Download combined task + free play data OR go to task phase
 function downloadCombinedData() {
-    // Normalize condition string
-    function normalizeCondition(condition) {
-        if (!condition) return 'puzzleFirst';
-        const normalized = condition.trim().toLowerCase();
-        if (normalized === 'puzzlefirst') return 'puzzleFirst';
-        if (normalized === 'freeplayfirst') return 'freeplayFirst';
-        return condition.trim();
-    }
-    
-    // Check condition to determine flow
-    let condition = localStorage.getItem('experimentCondition') || 'puzzleFirst';
-    condition = normalizeCondition(condition);
-    
-    // If freeplayFirst, need to go to task phase now
-    if (condition === 'freeplayFirst') {
-        // Save free play data for later combination
-        const sessionData = {
-            sessions: JSON.parse(localStorage.getItem('freeplaySessions') || '[]'),
-            gallery: getGalleryFromStorage(),
-            helpers: loadFavoritesFromStorage(),
-            completionTime: new Date().toISOString()
-        };
-        localStorage.setItem('freeplayExperimentData', JSON.stringify(sessionData));
-        
-        // Clear helpers when switching from freeplay to puzzle
-        localStorage.setItem('clearFavoritesOnLoad', 'true');
-        
-        // Redirect to task phase
-        showToast('Moving to puzzle-solving phase...', 'info', 2000);
-        setTimeout(() => {
-            window.location.href = 'task.html';
-        }, 2000);
-        return;
-    }
-    
-    // puzzleFirst: download combined data
+    // puzzleFirst flow: download combined data (task + freeplay)
     // Load task data from localStorage
     const taskDataStr = localStorage.getItem('taskExperimentData');
     const taskCompletionTime = localStorage.getItem('taskCompletionTime');

@@ -290,24 +290,12 @@ function normalizeCondition(condition) {
 
 // Save task data to localStorage before entering free play
 function enterFreePlayMode() {
-    // Check condition first
-    let condition = localStorage.getItem('experimentCondition') || 'puzzleFirst';
-    condition = normalizeCondition(condition);
-    console.log('enterFreePlayMode called - Condition:', condition);
-    
-    // This function should only be called in puzzleFirst condition
-    if (condition !== 'puzzleFirst') {
-        console.error('enterFreePlayMode() should not be called in freeplayFirst condition');
-        console.log('Current localStorage:', localStorage.getItem('experimentCondition'));
-        return; // Exit early
-    }
-    
     // Save task data to localStorage for later combination
     localStorage.setItem('taskExperimentData', JSON.stringify(allTrialsData));
     localStorage.setItem('taskCompletionTime', new Date().toISOString());
     
-    // Clear helpers when switching from puzzle to freeplay
-    localStorage.setItem('clearFavoritesOnLoad', 'true');
+    // Keep helpers from task phase - they will carry over to freeplay
+    // (Do NOT clear favorites when switching from puzzle to freeplay)
     
     console.log('Redirecting to freeplay...');
     window.location.href = 'freeplay.html';
@@ -2822,14 +2810,8 @@ function registerKeyboardShortcuts() {
 
 // Run on initial load: initialize and auto-start
 document.addEventListener('DOMContentLoaded', () => {
-    // Check if we need to clear favorites when switching from freeplay to puzzle
-    if (localStorage.getItem('clearFavoritesOnLoad') === 'true') {
-        localStorage.removeItem('favorites');
-        localStorage.removeItem('patternHelpers');
-        favorites = [];
-        localStorage.removeItem('clearFavoritesOnLoad');
-        console.log('Cleared favorites/helpers when switching from freeplay to puzzle phase');
-    }
+    // Task is always the first phase (puzzleFirst flow)
+    // Helpers will be cleared in initializeApp()
     
     initializeApp();
     startExperiment();
