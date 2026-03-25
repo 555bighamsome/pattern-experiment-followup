@@ -2135,6 +2135,24 @@ body:has(#experimentContent) {
     background: #f0fdf4;
 }
 
+.stimulus-card.failed {
+    border-color: #fca5a5;
+    background: #fef2f2;
+}
+
+.failed-order-badge {
+    min-width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #dc2626;
+    color: #991b1b;
+    background: #fee2e2;
+    font-size: 0.62rem;
+    font-weight: 700;
+}
+
 .stimulus-card.in-progress {
     border-color: #93c5fd;
     background: #eff6ff;

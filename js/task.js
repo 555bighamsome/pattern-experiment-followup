@@ -40,6 +40,7 @@ const GEOMETRIC_PRIMITIVE_NAMES = ['triangle_new', 'diag_square', 'border_square
 let activePrimitiveCondition = PRIMITIVE_CONDITION_A;
 let stimulusCatalog = [];
 let solvedActualIndices = new Set();
+let failedActualIndices = new Set();
 let completionOrderByActualIndex = new Map();
 let participantChosenOrder = [];
 let brushInterfaceHandle = null;
@@ -786,6 +787,7 @@ function resolveUnaryOperandSource() {
 function startExperiment() {
     allTrialsData = [];
     solvedActualIndices = new Set();
+    failedActualIndices = new Set();
     completionOrderByActualIndex = new Map();
     participantChosenOrder = [];
     pendingTargetPickIndex = 0;
@@ -1037,15 +1039,17 @@ function renderStimulusOverview() {
         const card = document.createElement('div');
         card.className = 'stimulus-card';
         const isCompleted = solvedActualIndices.has(item.actualIndex);
+        const isFailed = failedActualIndices.has(item.actualIndex);
         const completionOrder = completionOrderByActualIndex.get(item.actualIndex) || null;
         const isCurrent = selectionActualIndex === item.actualIndex;
         if (isCompleted) card.classList.add('completed');
+        else if (isFailed) card.classList.add('failed');
         else if (isCurrent) card.classList.add('in-progress');
 
         const header = document.createElement('div');
         header.className = 'stimulus-card-header';
         header.innerHTML = completionOrder
-            ? `<span class="completed-order-badge">${completionOrder}</span>`
+            ? `<span class="${isCompleted ? 'completed-order-badge' : 'failed-order-badge'}">${completionOrder}</span>`
             : '<span></span>';
 
         const thumb = document.createElement('div');
@@ -1056,13 +1060,13 @@ function renderStimulusOverview() {
         actions.className = 'stimulus-card-actions';
         const status = document.createElement('div');
         status.className = 'stimulus-card-status';
-        status.textContent = isCompleted ? 'Completed' : '';
+        status.textContent = isCompleted ? 'Completed' : isFailed ? 'Incorrect' : '';
 
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'btn btn-primary stimulus-pick-btn';
         btn.textContent = pendingTargetPickIndex === 0 ? 'Start with this' : 'Choose next';
-        const canPick = !isCompleted && testOrder.indexOf(item.actualIndex) >= pendingTargetPickIndex;
+        const canPick = !isCompleted && !isFailed && testOrder.indexOf(item.actualIndex) >= pendingTargetPickIndex;
         btn.disabled = !canPick;
         btn.addEventListener('click', () => pickNextStimulus(item.actualIndex));
 
@@ -2606,7 +2610,14 @@ function submitAnswer() {
         currentTrialRecord.pointsAwarded = pointsAwardedThisSubmission;
         currentTrialRecord.totalPointsAfter = totalPoints;
         const actualIndex = currentTrialRecord.actualProblemIndex;
-        solvedActualIndices.add(actualIndex);
+        if (match) {
+            solvedActualIndices.add(actualIndex);
+            failedActualIndices.delete(actualIndex);
+        } else {
+            if (!solvedActualIndices.has(actualIndex)) {
+                failedActualIndices.add(actualIndex);
+            }
+        }
         if (!completionOrderByActualIndex.has(actualIndex)) {
             completionOrderByActualIndex.set(actualIndex, completionOrderByActualIndex.size + 1);
         }
