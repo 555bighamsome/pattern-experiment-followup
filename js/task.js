@@ -2582,6 +2582,11 @@ function submitAnswer() {
         return;
     }
 
+    if (!operationsHistory || operationsHistory.length === 0) {
+        showToast('Please build a pattern before submitting.', 'warning');
+        return;
+    }
+
     const match = JSON.stringify(currentPattern) === JSON.stringify(targetPattern);
     const previouslySuccessful = currentTrialRecord?.success === true;
 
